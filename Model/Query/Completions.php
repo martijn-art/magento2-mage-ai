@@ -151,6 +151,8 @@ class Completions
                 return $this->makeAnthropicRequest($this->getAnthropicPayload($prompt, $maxToken));
             case 'gemini':
                 return $this->makeGeminiRequest($this->getGeminiPayload($prompt, $maxToken));
+            case 'openrouter':
+                return $this->makeOpenRouterRequest($this->getOpenRouterPayload($prompt, $maxToken));
             default:
                 return $this->makeOpenAIRequest($this->getOpenAIPayload($prompt, $maxToken));
         }
@@ -484,6 +486,110 @@ class Completions
         }
 
         return $this->stripCodeFences($text);
+    }
+
+    // -------------------------------------------------------------------------
+    // OpenRouter (OpenAI-compatible gateway to many models)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Set OpenRouter request headers
+     *
+     * @return void
+     * @throws QueryException
+     */
+    protected function setOpenRouterHeaders(): void
+    {
+        $token = $this->helper->getOpenRouterApiSecret();
+        if (!$token) {
+            throw new QueryException(__('OpenRouter API Key not found. Please check configuration.'));
+        }
+        $headers = [
+            'Content-Type'  => 'application/json',
+            'Authorization' => 'Bearer ' . $token,
+        ];
+        $siteName = $this->helper->getOpenRouterSiteName();
+        if ($siteName !== '') {
+            $headers['X-Title'] = $siteName;
+        }
+        $this->curl->setHeaders($headers);
+    }
+
+    /**
+     * Build OpenRouter Chat Completions payload
+     *
+     * @param string $prompt
+     * @param int|false $maxToken
+     * @return string
+     * @throws QueryException
+     */
+    protected function getOpenRouterPayload(string $prompt, $maxToken = false): string
+    {
+        $model = $this->helper->getOpenRouterModel();
+        if ($model === '') {
+            throw new QueryException(__('OpenRouter model not set. Please check configuration.'));
+        }
+        $payload = [
+            'model'       => $model,
+            // Some upstream providers (e.g. Anthropic) reject temperatures above 1.0
+            'temperature' => min(1.0, $this->helper->getTemperature()),
+            'messages'    => [
+                ['role' => 'system', 'content' => $this->getSystemPrompt()],
+                ['role' => 'user',   'content' => $prompt],
+            ],
+        ];
+        if ($maxToken) {
+            $payload['max_tokens'] = $maxToken;
+        }
+        return $this->json->serialize($payload);
+    }
+
+    /**
+     * Execute OpenRouter request and return generated text
+     *
+     * @param string $payload
+     * @return string
+     * @throws QueryException
+     */
+    protected function makeOpenRouterRequest(string $payload): string
+    {
+        $this->setOpenRouterHeaders();
+        $this->curl->post($this->helper->getOpenRouterBaseUrl() . '/v1/chat/completions', $payload);
+        return $this->validateOpenRouterResponse();
+    }
+
+    /**
+     * Parse and validate OpenRouter response
+     *
+     * @return string
+     * @throws QueryException
+     */
+    protected function validateOpenRouterResponse(): string
+    {
+        $status = $this->curl->getStatus();
+
+        if ($status == 401) {
+            throw new QueryException(__('Unauthorized response. Please check OpenRouter API key.'));
+        }
+        if ($status == 402) {
+            throw new QueryException(__('OpenRouter: insufficient credits on this account.'));
+        }
+
+        $response = $this->json->unserialize((string) $this->curl->getBody() ?: '{}');
+
+        if (isset($response['error'])) {
+            throw new QueryException(__('OpenRouter error: %1', $response['error']['message'] ?? 'Unknown error.'));
+        }
+        if ($status >= 500) {
+            throw new QueryException(__('OpenRouter server error.'));
+        }
+
+        $content = $response['choices'][0]['message']['content'] ?? '';
+        if (!is_string($content) || trim($content) === '') {
+            throw new QueryException(__('No results found from OpenRouter API response.'));
+        }
+
+        return $this->stripCodeFences($content);
     }
 
     // -------------------------------------------------------------------------

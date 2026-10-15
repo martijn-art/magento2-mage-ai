@@ -36,6 +36,7 @@ class AIProvider implements OptionSourceInterface
             ['value' => 'gemini', 'label' => __('Google (Gemini)')],
             ['value' => 'openai', 'label' => __('OpenAI (ChatGPT)')],
             ['value' => 'anthropic', 'label' => __('Anthropic (Claude)')],
+            ['value' => 'openrouter', 'label' => __('OpenRouter (any model)')],
         ];
     }
 }

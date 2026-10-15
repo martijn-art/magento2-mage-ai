@@ -119,6 +119,37 @@
                         <field id="provider">gemini</field>
                     </depends>
                 </field>
+                <!-- OpenRouter fields -->
+                <field id="openrouter_base_url" translate="label" type="text" sortOrder="110" showInDefault="1" showInStore="1" showInWebsite="1" canRestore="1">
+                    <label>Base URL</label>
+                    <comment>Leave default for openrouter.ai.</comment>
+                    <depends>
+                        <field id="provider">openrouter</field>
+                    </depends>
+                </field>
+                <field id="openrouter_api_secret" translate="label" type="obscure" sortOrder="120" showInDefault="1">
+                    <label>API Key</label>
+                    <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
+                    <comment><![CDATA[Generate API key from <a href="https://openrouter.ai/settings/keys" target="_blank">openrouter.ai</a>]]></comment>
+                    <depends>
+                        <field id="provider">openrouter</field>
+                    </depends>
+                </field>
+                <field id="openrouter_model" translate="label" type="text" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Model</label>
+                    <comment><![CDATA[Any model slug from <a href="https://openrouter.ai/models" target="_blank">openrouter.ai/models</a>, e.g. <code>anthropic/claude-sonnet-5</code>, <code>google/gemini-3.8-flash</code>, <code>mistralai/...</code>. Can be set per store view to compare models.]]></comment>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="provider">openrouter</field>
+                    </depends>
+                </field>
+                <field id="openrouter_site_name" translate="label" type="text" sortOrder="140" showInDefault="1" canRestore="1">
+                    <label>App Name</label>
+                    <comment>Optional. Shown in your OpenRouter activity log so you can tell this usage apart.</comment>
+                    <depends>
+                        <field id="provider">openrouter</field>
+                    </depends>
+                </field>
             </group>
             <group id="product_description" translate="label" type="text" sortOrder="30" showInDefault="1">
                 <label>Product Description Configuration</label>

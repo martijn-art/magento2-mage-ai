@@ -38,6 +38,10 @@
                 <gemini_base_url>https://generativelanguage.googleapis.com</gemini_base_url>
                 <gemini_api_secret backend_model="Magento\Config\Model\Config\Backend\Encrypted"/>
                 <gemini_model>gemini-3.8-flash</gemini_model>
+                <openrouter_base_url>https://openrouter.ai/api</openrouter_base_url>
+                <openrouter_api_secret backend_model="Magento\Config\Model\Config\Backend\Encrypted"/>
+                <openrouter_model>openai/gpt-5.6-luna</openrouter_model>
+                <openrouter_site_name>Holland Winkel</openrouter_site_name>
             </api>
             <product_description>
                 <temperature>0.5</temperature>

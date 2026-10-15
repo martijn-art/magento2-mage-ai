@@ -98,7 +98,7 @@ class ImageGeneration
                 return $this->generateWithGemini($prompt);
             default:
                 throw new QueryException(__(
-                    'Image generation is not supported by the Anthropic provider. Please switch to OpenAI or Gemini in MageAI configuration.'
+                    'Image generation is only supported by the OpenAI and Gemini providers. Please switch to OpenAI or Gemini in MageAI configuration.'
                 ));
         }
     }

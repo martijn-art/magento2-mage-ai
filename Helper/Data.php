@@ -37,6 +37,10 @@ class Data extends AbstractHelper
     public const XML_PATH_GEMINI_BASE_URL = 'mageai/api/gemini_base_url';
     public const XML_PATH_GEMINI_API_KEY = 'mageai/api/gemini_api_secret';
     public const XML_PATH_GEMINI_MODEL = 'mageai/api/gemini_model';
+    public const XML_PATH_OPENROUTER_BASE_URL = 'mageai/api/openrouter_base_url';
+    public const XML_PATH_OPENROUTER_API_KEY = 'mageai/api/openrouter_api_secret';
+    public const XML_PATH_OPENROUTER_MODEL = 'mageai/api/openrouter_model';
+    public const XML_PATH_OPENROUTER_SITE_NAME = 'mageai/api/openrouter_site_name';
     public const XML_PATH_PRODUCT_ATTRIBUTE = 'mageai/product_description/attribute';
     public const XML_PATH_TEMPERATURE = 'mageai/product_description/temperature';
     public const XML_PATH_DESCRIPTION_PROMPT = 'mageai/product_description/description_prompt';
@@ -185,6 +189,46 @@ class Data extends AbstractHelper
     public function getGeminiModel()
     {
         return $this->getConfig(self::XML_PATH_GEMINI_MODEL);
+    }
+
+    /**
+     * Get OpenRouter base URL
+     *
+     * @return string
+     */
+    public function getOpenRouterBaseUrl()
+    {
+        return rtrim((string) $this->getConfig(self::XML_PATH_OPENROUTER_BASE_URL), '/');
+    }
+
+    /**
+     * Get OpenRouter API key
+     *
+     * @return string
+     */
+    public function getOpenRouterApiSecret()
+    {
+        return $this->getConfig(self::XML_PATH_OPENROUTER_API_KEY);
+    }
+
+    /**
+     * Get OpenRouter model slug (e.g. anthropic/claude-sonnet-5)
+     *
+     * @return string
+     */
+    public function getOpenRouterModel()
+    {
+        return trim((string) $this->getConfig(self::XML_PATH_OPENROUTER_MODEL));
+    }
+
+    /**
+     * Get the app name sent to OpenRouter for usage attribution
+     *
+     * @return string
+     */
+    public function getOpenRouterSiteName()
+    {
+        return trim((string) $this->getConfig(self::XML_PATH_OPENROUTER_SITE_NAME));
     }
 
     /**
