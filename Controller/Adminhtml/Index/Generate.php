@@ -91,9 +91,11 @@ class Generate extends Action implements HttpPostActionInterface
                         ];
                     } else {
                         $type = $this->getRequest()->getParam('type');
+                        $imageFile = $this->getRequest()->getParam('image_file');
                         $data = $this->queryCompletion->generateProductDescriptionFromData(
                             $attributeData,
-                            $type
+                            $type,
+                            is_string($imageFile) && $imageFile !== '' ? $imageFile : null
                         );
                         $response = ['error' => false, 'data' => $data];
                     }

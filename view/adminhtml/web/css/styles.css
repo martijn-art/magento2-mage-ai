@@ -158,3 +158,25 @@
     width: 100%;
 }
 
+
+.mp-mageai-include-image {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 10px;
+    vertical-align: middle;
+    cursor: pointer;
+    font-size: 1.3rem;
+}
+
+.mp-mageai-include-image input {
+    margin: 0;
+}
+
+.mp-mageai-include-image img {
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+    border: 1px solid #cccccc;
+    border-radius: 2px;
+}

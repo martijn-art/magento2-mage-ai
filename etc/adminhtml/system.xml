@@ -163,6 +163,11 @@
                     <comment>AI will use the values of the selected attributes to generate content.</comment>
                     <source_model>Mageprince\MageAI\Model\Config\Source\Attributes</source_model>
                 </field>
+                <field id="image_mode" translate="label" type="select" sortOrder="25" showInDefault="1" canRestore="1">
+                    <label>Include Product Image</label>
+                    <comment><![CDATA[When the product has a photo, show an "Include product image" tickbox next to the Generate buttons. The base image (or else the first gallery image) is resized to max 1024px and sent with the request, so the AI can describe colour, material and design. Needs a model that accepts images; on OpenRouter check the model's input modalities.]]></comment>
+                    <source_model>Mageprince\MageAI\Model\Config\Source\DescriptionImageMode</source_model>
+                </field>
                 <field id="description_prompt" translate="label" type="textarea" sortOrder="30" showInDefault="1" showInStore="1" showInWebsite="1" canRestore="1">
                     <label>Full Description Prompt</label>
                     <comment><![CDATA[Available variables: <code>{{ product.name }}</code> — product name, <code>{{ product.attributes }}</code> — selected attribute label/value pairs.]]></comment>

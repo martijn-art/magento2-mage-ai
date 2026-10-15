@@ -139,6 +139,7 @@ $isEnabled = $helper->isEnabled();
         window.isMpMageAIEnabled = '<?= $escaper->escapeJs($isEnabled) ?>';
         window.mpMageAIAttributes = <?= /* @noEscape */ json_encode($helper->getProductAttributes()) ?>;
         window.mpMageAIImageAttributes = <?= /* @noEscape */ json_encode($helper->getImageAttributes()) ?>;
+        window.mpMageAIDescriptionImageMode = '<?= $escaper->escapeJs($helper->getDescriptionImageMode()) ?>';
     </script>
     <script type="text/x-magento-init">
         {

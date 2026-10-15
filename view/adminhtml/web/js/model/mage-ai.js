@@ -11,7 +11,48 @@ define([
             advancedGenerateBtnSelector: '.advanced-generate-mageai-btn',
             advancedGenerateModalSelector: '#advanced-generate-modal',
             promptGenerateTextAreaSelector: '#mp-custom-prompt',
-            shortDescriptionFieldIdentifier: 'product_form_short_description_mageai'
+            shortDescriptionFieldIdentifier: 'product_form_short_description_mageai',
+            gallerySelector: '[data-mage-init*="productGallery"]'
+        },
+
+        /**
+         * Returns the product photo to send with a description request, or null when there is none.
+         * Prefers the image with the Base Image role, otherwise the first visible gallery image.
+         *
+         * @returns {{file: string, url: string}|null}
+         */
+        getDescriptionImage: function () {
+            var $gallery = $(this.options.gallerySelector).first(),
+                baseFile = $.trim($('[name="product[image]"]').val() || ''),
+                images = [],
+                match = null;
+
+            if (!$gallery.length) {
+                $gallery = $('#media_gallery_content');
+            }
+
+            $gallery.find('[data-role=image]').each(function () {
+                var $el = $(this),
+                    data = $el.data('imageData');
+
+                if ($el.hasClass('removed') || !data || !data.file) {
+                    return;
+                }
+                if (data['media_type'] && data['media_type'] !== 'image') {
+                    return;
+                }
+                images.push(data);
+            });
+
+            $.each(images, function (i, data) {
+                if (baseFile && data.file === baseFile) {
+                    match = data;
+                    return false;
+                }
+            });
+            match = match || images[0] || null;
+
+            return match ? {file: match.file, url: match.url || ''} : null;
         },
 
         /**
@@ -176,9 +217,10 @@ define([
          * @param {Object}        attributeData  Product attribute values from the form ({} for custom prompts)
          * @param {string|false}  type           'short', 'full', or false for custom prompts
          * @param {string|false}  prompt         Custom prompt text, or false for attribute-based generation
+         * @param {string}        [imageFile]    Gallery file of a product photo to send along, if any
          * @returns {jQuery.Deferred}
          */
-        generateContent: function (attributeData, type, prompt) {
+        generateContent: function (attributeData, type, prompt, imageFile) {
             var self = this;
             var deferred = $.Deferred();
 
@@ -190,7 +232,8 @@ define([
                     'form_key': FORM_KEY,
                     'attribute_data': attributeData || {},
                     'type': type,
-                    'custom_prompt': prompt
+                    'custom_prompt': prompt,
+                    'image_file': imageFile || ''
                 },
                 success: function (response) {
                     if (response.error == false) {

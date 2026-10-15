@@ -34,6 +34,7 @@ class Completions
     private const ANTHROPIC_DEFAULT_MAX_TOKENS = 2048;
     private const GEMINI_DEFAULT_MAX_TOKENS = 2048;
     private const SYSTEM_PROMPT = 'You are a helpful assistant. Provide only the main generated content without any greetings, introductions, or explanations. Never wrap output in markdown code blocks or backticks.';
+    private const IMAGE_INSTRUCTION = 'A photo of the product is attached. Use it to describe what is clearly visible (such as colour, material, shape, pattern and design details). Do not invent facts that are neither visible in the photo nor given above, and do not mention the photo itself.';
 
     /**
      * @var Curl
@@ -56,17 +57,29 @@ class Completions
     protected $attributeFormatter;
 
     /**
+     * @var DescriptionImage
+     */
+    protected $descriptionImage;
+
+    /**
      * @param Curl $curl
      * @param Json $json
      * @param HelperData $helper
      * @param AttributeFormatter $attributeFormatter
+     * @param DescriptionImage $descriptionImage
      */
-    public function __construct(Curl $curl, Json $json, HelperData $helper, AttributeFormatter $attributeFormatter)
-    {
+    public function __construct(
+        Curl $curl,
+        Json $json,
+        HelperData $helper,
+        AttributeFormatter $attributeFormatter,
+        DescriptionImage $descriptionImage
+    ) {
         $this->curl = $curl;
         $this->helper = $helper;
         $this->json = $json;
         $this->attributeFormatter = $attributeFormatter;
+        $this->descriptionImage = $descriptionImage;
     }
 
     /**
@@ -100,15 +113,29 @@ class Completions
      *
      * Works for both new (unsaved) and existing products.
      *
+     * When $imageFile is given (a product gallery "file" value), the photo is attached to the
+     * request so the model can describe what it sees.
+     *
      * @param array $data ['attributeCode' => 'displayValue', ...]
      * @param string $type 'short' or 'full'
+     * @param string|null $imageFile
      * @return string
      * @throws QueryException
      */
-    public function generateProductDescriptionFromData(array $data, string $type): string
+    public function generateProductDescriptionFromData(array $data, string $type, ?string $imageFile = null): string
     {
         $prompt = $this->buildProductDescriptionFromData($data, $type);
-        return $this->generate($prompt, $this->helper->getMaxTokens($type));
+        $image = null;
+
+        if ($imageFile !== null && $imageFile !== '') {
+            if (!$this->helper->isDescriptionImageEnabled()) {
+                throw new QueryException(__('Sending the product image is disabled in MageAI configuration.'));
+            }
+            $image = $this->descriptionImage->load($imageFile);
+            $prompt .= "\n\n" . self::IMAGE_INSTRUCTION;
+        }
+
+        return $this->generate($prompt, $this->helper->getMaxTokens($type), $image);
     }
 
     /**
@@ -141,21 +168,45 @@ class Completions
      *
      * @param string $prompt
      * @param int|false $maxToken
+     * @param array|null $image ['mimeType' => ..., 'base64' => ...] to attach, or null for text only
      * @return string
      * @throws QueryException
      */
-    protected function generate(string $prompt, $maxToken = false): string
+    protected function generate(string $prompt, $maxToken = false, ?array $image = null): string
     {
         switch ($this->helper->getProvider()) {
             case 'anthropic':
-                return $this->makeAnthropicRequest($this->getAnthropicPayload($prompt, $maxToken));
+                return $this->makeAnthropicRequest($this->getAnthropicPayload($prompt, $maxToken, $image));
             case 'gemini':
-                return $this->makeGeminiRequest($this->getGeminiPayload($prompt, $maxToken));
+                return $this->makeGeminiRequest($this->getGeminiPayload($prompt, $maxToken, $image));
             case 'openrouter':
-                return $this->makeOpenRouterRequest($this->getOpenRouterPayload($prompt, $maxToken));
+                return $this->makeOpenRouterRequest($this->getOpenRouterPayload($prompt, $maxToken, $image));
             default:
-                return $this->makeOpenAIRequest($this->getOpenAIPayload($prompt, $maxToken));
+                return $this->makeOpenAIRequest($this->getOpenAIPayload($prompt, $maxToken, $image));
         }
+    }
+
+    /**
+     * Build an OpenAI-style user message content: plain text, or text plus an image part
+     *
+     * Used for both OpenAI and OpenRouter (which follows the same Chat Completions format).
+     *
+     * @param string $prompt
+     * @param array|null $image
+     * @return string|array
+     */
+    protected function getOpenAIUserContent(string $prompt, ?array $image)
+    {
+        if ($image === null) {
+            return $prompt;
+        }
+        return [
+            ['type' => 'text', 'text' => $prompt],
+            [
+                'type'      => 'image_url',
+                'image_url' => ['url' => 'data:' . $image['mimeType'] . ';base64,' . $image['base64']],
+            ],
+        ];
     }
 
     /**
@@ -228,9 +279,11 @@ class Completions
      *
      * @param string $prompt
      * @param int|false $maxToken
+     * @param array|null $image
      * @return string
+     * @throws QueryException
      */
-    protected function getOpenAIPayload(string $prompt, $maxToken = false): string
+    protected function getOpenAIPayload(string $prompt, $maxToken = false, ?array $image = null): string
     {
         $model = $this->helper->getModel();
         $payload = [
@@ -248,9 +301,12 @@ class Completions
         if (strpos($model, 'gpt') !== false) {
             $payload['messages'] = [
                 ['role' => 'system', 'content' => $this->getSystemPrompt()],
-                ['role' => 'user',   'content' => $prompt],
+                ['role' => 'user',   'content' => $this->getOpenAIUserContent($prompt, $image)],
             ];
         } else {
+            if ($image !== null) {
+                throw new QueryException(__('The selected OpenAI model cannot read images. Choose a GPT model or untick "Include product image".'));
+            }
             $payload['prompt'] = $prompt;
         }
 
@@ -331,17 +387,32 @@ class Completions
      *
      * @param string $prompt
      * @param int|false $maxToken
+     * @param array|null $image
      * @return string
      */
-    protected function getAnthropicPayload(string $prompt, $maxToken = false): string
+    protected function getAnthropicPayload(string $prompt, $maxToken = false, ?array $image = null): string
     {
+        $content = $prompt;
+        if ($image !== null) {
+            $content = [
+                [
+                    'type'   => 'image',
+                    'source' => [
+                        'type'       => 'base64',
+                        'media_type' => $image['mimeType'],
+                        'data'       => $image['base64'],
+                    ],
+                ],
+                ['type' => 'text', 'text' => $prompt],
+            ];
+        }
         $payload = [
             'model'       => $this->helper->getAnthropicModel(),
             'max_tokens'  => $maxToken ?: self::ANTHROPIC_DEFAULT_MAX_TOKENS,
             'temperature' => min(1.0, $this->helper->getTemperature()),
             'system'      => $this->getSystemPrompt(),
             'messages'    => [
-                ['role' => 'user', 'content' => $prompt],
+                ['role' => 'user', 'content' => $content],
             ],
         ];
         return $this->json->serialize($payload);
@@ -417,16 +488,26 @@ class Completions
      *
      * @param string $prompt
      * @param int|false $maxToken
+     * @param array|null $image
      * @return string
      */
-    protected function getGeminiPayload(string $prompt, $maxToken = false): string
+    protected function getGeminiPayload(string $prompt, $maxToken = false, ?array $image = null): string
     {
+        $parts = [['text' => $prompt]];
+        if ($image !== null) {
+            $parts[] = [
+                'inline_data' => [
+                    'mime_type' => $image['mimeType'],
+                    'data'      => $image['base64'],
+                ],
+            ];
+        }
         $payload = [
             'system_instruction' => [
                 'parts' => [['text' => $this->getSystemPrompt()]],
             ],
             'contents' => [
-                ['parts' => [['text' => $prompt]]],
+                ['parts' => $parts],
             ],
             'generationConfig' => [
                 'temperature'     => $this->helper->getTemperature(),
@@ -520,10 +601,11 @@ class Completions
      *
      * @param string $prompt
      * @param int|false $maxToken
+     * @param array|null $image
      * @return string
      * @throws QueryException
      */
-    protected function getOpenRouterPayload(string $prompt, $maxToken = false): string
+    protected function getOpenRouterPayload(string $prompt, $maxToken = false, ?array $image = null): string
     {
         $model = $this->helper->getOpenRouterModel();
         if ($model === '') {
@@ -535,7 +617,7 @@ class Completions
             'temperature' => min(1.0, $this->helper->getTemperature()),
             'messages'    => [
                 ['role' => 'system', 'content' => $this->getSystemPrompt()],
-                ['role' => 'user',   'content' => $prompt],
+                ['role' => 'user',   'content' => $this->getOpenAIUserContent($prompt, $image)],
             ],
         ];
         if ($maxToken) {

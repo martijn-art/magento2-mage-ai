@@ -46,6 +46,7 @@
             <product_description>
                 <temperature>0.5</temperature>
                 <attribute>name</attribute>
+                <image_mode>unchecked</image_mode>
                 <description_max_tokens>4000</description_max_tokens>
                 <short_description_max_tokens>3000</short_description_max_tokens>
                 <description_prompt><![CDATA[You are generating a SEO-friendly product full description in HTML format for an e-commerce store. Write a clear and natural HTML full description based on product name {{ product.name }} and {{ product.attributes }}

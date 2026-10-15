@@ -43,6 +43,7 @@ class Data extends AbstractHelper
     public const XML_PATH_OPENROUTER_SITE_NAME = 'mageai/api/openrouter_site_name';
     public const XML_PATH_PRODUCT_ATTRIBUTE = 'mageai/product_description/attribute';
     public const XML_PATH_TEMPERATURE = 'mageai/product_description/temperature';
+    public const XML_PATH_DESCRIPTION_IMAGE_MODE = 'mageai/product_description/image_mode';
     public const XML_PATH_DESCRIPTION_PROMPT = 'mageai/product_description/description_prompt';
     public const XML_PATH_DESCRIPTION_MAX_TOKENS = 'mageai/product_description/description_max_tokens';
     public const XML_PATH_SHORT_SHORT_DESCRIPTION_PROMPT = 'mageai/product_description/short_description_prompt';
@@ -229,6 +230,27 @@ class Data extends AbstractHelper
     public function getOpenRouterSiteName()
     {
         return trim((string) $this->getConfig(self::XML_PATH_OPENROUTER_SITE_NAME));
+    }
+
+    /**
+     * How the "Include product image" option is offered: 'disabled', 'unchecked' or 'checked'
+     *
+     * @return string
+     */
+    public function getDescriptionImageMode(): string
+    {
+        $mode = (string) $this->getConfig(self::XML_PATH_DESCRIPTION_IMAGE_MODE);
+        return in_array($mode, ['disabled', 'unchecked', 'checked'], true) ? $mode : 'unchecked';
+    }
+
+    /**
+     * Whether a product image may be sent along with description requests
+     *
+     * @return bool
+     */
+    public function isDescriptionImageEnabled(): bool
+    {
+        return $this->getDescriptionImageMode() !== 'disabled';
     }
 
     /**
